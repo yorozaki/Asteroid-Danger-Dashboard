@@ -11,7 +11,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const slider = document.getElementById("timeSlider");
     const timeLabel = document.getElementById("time-label");
     const countdownEl = document.getElementById("countdown");
-
     const neoListEl = document.getElementById("neo-list");
 
     const mName = document.getElementById("m-name");
@@ -23,18 +22,90 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let selectedIndex = 0;
 
-    /* ----------------------------- LIST UI ----------------------------- */
-    ASTEROID_DATA.forEach((a, i) => {
+    /* ------------------------------------------------------------------
+     * 1. NORMALIZE RAW NASA DATA → CLEAN STRUCTURE
+     * ------------------------------------------------------------------ */
+
+    const RAW_DATA = ASTEROID_DATA || [];
+
+    function toNum(x) {
+        const n = parseFloat(x);
+        return Number.isFinite(n) ? n : 0;
+    }
+
+    function mapAsteroid(a) {
+        const ca = (a.close_approach_data && a.close_approach_data[0]) || {};
+        const missKm = toNum(ca.miss_distance && ca.miss_distance.kilometers);
+        const speedKms = toNum(
+            ca.relative_velocity && ca.relative_velocity.kilometers_per_second
+        );
+
+        const dateFull =
+            ca.close_approach_date_full || ca.close_approach_date || "";
+
+        let epochMs = 0;
+        if (ca.epoch_date_close_approach) {
+            epochMs = Number(ca.epoch_date_close_approach);
+        } else if (dateFull) {
+            // rough parse fallback
+            const d = new Date(dateFull.replace(" ", "T") + "Z");
+            epochMs = d.getTime();
+        }
+        if (!Number.isFinite(epochMs) || epochMs <= 0) {
+            epochMs = Date.now();
+        }
+
+        const dKm = a.estimated_diameter
+            ? a.estimated_diameter.kilometers || {}
+            : {};
+        const dMin = toNum(dKm.estimated_diameter_min);
+        const dMax = toNum(dKm.estimated_diameter_max);
+        const dAvg = (dMin + dMax) / 2 || dMin || dMax || 0;
+
+        return {
+            raw: a,
+            name: a.name || "Unknown",
+            diameter_km: dAvg, // average km
+            speed_kms: speedKms,
+            miss_distance_km: missKm,
+            hazardous: !!a.is_potentially_hazardous_asteroid,
+            closest_approach: dateFull,
+            close_epoch_ms: epochMs
+        };
+    }
+
+    const NEO_DATA = RAW_DATA.map(mapAsteroid);
+
+    function fmtNum(n, digits = 2) {
+        if (!Number.isFinite(n)) return "–";
+        return n.toLocaleString(undefined, {
+            maximumFractionDigits: digits
+        });
+    }
+
+    /* ------------------------------------------------------------------
+     * 2. LIST UI
+     * ------------------------------------------------------------------ */
+
+    NEO_DATA.forEach((a, i) => {
         const div = document.createElement("div");
         div.className = "neo-item";
         div.dataset.index = i;
 
         div.innerHTML = `
       <div class="neo-name">${a.name}</div>
-      <div class="neo-line"><span>Diameter</span><span>${a.diameter_km} km</span></div>
-      <div class="neo-line"><span>Speed</span><span>${a.speed_kms} km/s</span></div>
-      <div class="neo-line"><span>Miss</span><span>${a.miss_distance_km.toLocaleString()} km</span></div>
-      <div class="neo-line"><span>Hazard</span><span>${a.hazardous ? "Yes" : "No"}</span></div>
+      <div class="neo-line"><span>Diameter</span><span>${fmtNum(
+            a.diameter_km
+        )} km</span></div>
+      <div class="neo-line"><span>Speed</span><span>${fmtNum(
+            a.speed_kms
+        )} km/s</span></div>
+      <div class="neo-line"><span>Miss</span><span>${fmtNum(
+            a.miss_distance_km,
+            0
+        )} km</span></div>
+      <div class="neo-line"><span>Hazard</span><span>${a.hazardous ? "Yes" : "No"
+            }</span></div>
     `;
 
         div.addEventListener("click", () => {
@@ -53,14 +124,19 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    /* ----------------------------- METRICS ----------------------------- */
+    /* ------------------------------------------------------------------
+     * 3. METRICS (top 6 cards)
+     * ------------------------------------------------------------------ */
+
     function updateMetrics(i) {
-        const a = ASTEROID_DATA[i];
+        const a = NEO_DATA[i] || NEO_DATA[0];
+        if (!a) return;
+
         mName.textContent = a.name;
-        mDiameter.textContent = `${a.diameter_km} km`;
-        mSpeed.textContent = `${a.speed_kms} km/s`;
-        mMiss.textContent = `${a.miss_distance_km.toLocaleString()} km`;
-        mApproach.textContent = a.closest_approach;
+        mDiameter.textContent = `${fmtNum(a.diameter_km)} km`;
+        mSpeed.textContent = `${fmtNum(a.speed_kms)} km/s`;
+        mMiss.textContent = `${fmtNum(a.miss_distance_km, 0)} km`;
+        mApproach.textContent = a.closest_approach || "–";
         mHazard.textContent = a.hazardous ? "Hazardous" : "Not Hazardous";
         mHazard.style.color = a.hazardous ? "#ff5c66" : "#4fa3ff";
     }
@@ -68,7 +144,10 @@ document.addEventListener("DOMContentLoaded", () => {
     updateMetrics(0);
     updateListSelection();
 
-    /* ----------------------------- COUNTDOWN (real-world) ----------------------------- */
+    /* ------------------------------------------------------------------
+     * 4. REAL-WORLD COUNTDOWN
+     * ------------------------------------------------------------------ */
+
     function formatCountdown(msDiff) {
         const sign = msDiff >= 0 ? "-" : "+";
         const abs = Math.abs(msDiff);
@@ -79,7 +158,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function updateCountdown() {
-        const a = ASTEROID_DATA[selectedIndex];
+        const a = NEO_DATA[selectedIndex];
         if (!a || !a.close_epoch_ms) {
             countdownEl.textContent = "";
             return;
@@ -92,33 +171,34 @@ document.addEventListener("DOMContentLoaded", () => {
     updateCountdown();
     setInterval(updateCountdown, 60_000);
 
-    /* ----------------------------- ASTEROID MODEL (real-time) ----------------------------- */
+    /* ------------------------------------------------------------------
+     * 5. ASTEROID MODEL (real-time fly-bys)
+     * ------------------------------------------------------------------ */
 
-    // We build a simple physically-plausible fly-by:
-    // distance^2 = d_min^2 + (v * Δt)^2
-    // (straight-line trajectory with miss distance d_min and speed v)
-    let maxSpeed = Math.max(...ASTEROID_DATA.map(a => a.speed_kms || 0));
+    let maxSpeed = Math.max(...NEO_DATA.map((a) => a.speed_kms || 0));
     if (!isFinite(maxSpeed) || maxSpeed <= 0) maxSpeed = 1;
 
-    const asteroids = ASTEROID_DATA.map((a, i) => {
+    const asteroids = NEO_DATA.map((a, i) => {
         const seed = i * 1733 + a.miss_distance_km;
-        const angle = seededRandom(seed) * Math.PI * 2;  // orientation in plane
+        const angle = seededRandom(seed) * Math.PI * 2;
 
         let epochMs = a.close_epoch_ms || Date.now();
-        // normalize weird zeros
         if (epochMs < 1e9) epochMs *= 1000;
 
         return {
             data: a,
             angle,
-            dMin: a.miss_distance_km,      // km
-            speed: a.speed_kms,            // km/s
-            epochClose: epochMs,           // ms
-            trail: [],
+            dMin: a.miss_distance_km || 1, // km
+            speed: a.speed_kms || 1, // km/s
+            epochClose: epochMs, // ms
+            trail: []
         };
     });
 
-    /* ----------------------------- CANVAS SETUP ----------------------------- */
+    /* ------------------------------------------------------------------
+     * 6. CANVAS SETUP + CAMERA
+     * ------------------------------------------------------------------ */
+
     function resizeCanvas() {
         const rect = canvas.getBoundingClientRect();
         const dpr = window.devicePixelRatio || 1;
@@ -129,7 +209,7 @@ document.addEventListener("DOMContentLoaded", () => {
     window.addEventListener("resize", resizeCanvas);
     resizeCanvas();
 
-    /* ----------------------------- CAMERA ROTATION ----------------------------- */
+    // rotation
     let viewAngle = 0;
     let dragging = false;
     let lastX = 0;
@@ -143,30 +223,27 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!dragging) return;
         const dx = e.clientX - lastX;
         lastX = e.clientX;
-        viewAngle += dx * 0.004; // rotate slowly
+        viewAngle += dx * 0.004;
     });
 
-    /* ----------------------------- CAMERA ZOOM ----------------------------- */
-    // 1.0 = normal view. Allow zoom 0.5x to 5x
+    // zoom
     let zoom = 1.0;
     const ZOOM_MIN = 0.35;
     const ZOOM_MAX = 5.0;
     const ZOOM_SPEED = 0.0016;
 
-    // Mouse wheel zoom
-    canvas.addEventListener("wheel", (e) => {
-        e.preventDefault();
+    canvas.addEventListener(
+        "wheel",
+        (e) => {
+            e.preventDefault();
+            zoom -= e.deltaY * ZOOM_SPEED;
+            if (zoom < ZOOM_MIN) zoom = ZOOM_MIN;
+            if (zoom > ZOOM_MAX) zoom = ZOOM_MAX;
+        },
+        { passive: false }
+    );
 
-        // scroll up → zoom in ; scroll down → zoom out
-        zoom -= e.deltaY * ZOOM_SPEED;
-
-        if (zoom < ZOOM_MIN) zoom = ZOOM_MIN;
-        if (zoom > ZOOM_MAX) zoom = ZOOM_MAX;
-    }, { passive: false });
-
-    // Pinch zoom for touchpads
     let lastTouchDist = null;
-
     canvas.addEventListener("touchmove", (e) => {
         if (e.touches.length === 2) {
             const dx = e.touches[0].clientX - e.touches[1].clientX;
@@ -182,20 +259,17 @@ document.addEventListener("DOMContentLoaded", () => {
             lastTouchDist = dist;
         }
     });
-
     canvas.addEventListener("touchend", () => {
         lastTouchDist = null;
     });
 
-    /* ----------------------------- TIME & WARP ----------------------------- */
-    // simTimeMs tracks a "virtual now". At warp=1, it stays synced to real time.
+    /* TIME & WARP */
     let simTimeMs = Date.now();
     let lastRealTs = performance.now();
 
-    // Slider: center (50) = 1x real; edges warp exponentially: 0.25x .. 4x
     function getWarp() {
-        const normalized = (slider.value - 50) / 25; // -2 .. 2
-        return Math.pow(2, normalized);              // 0.25 .. 4
+        const normalized = (slider.value - 50) / 25; // -2..2
+        return Math.pow(2, normalized); // 0.25..4
     }
 
     slider.addEventListener("input", () => {
@@ -203,13 +277,14 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     timeLabel.textContent = "x1.00";
 
-    /* ----------------------------- DRAW HELPERS ----------------------------- */
+    /* ------------------------------------------------------------------
+     * 7. DRAW HELPERS
+     * ------------------------------------------------------------------ */
+
     function drawEarth(cx, cy, r, simTimeSec) {
-        // Earth rotation angle (sidereal day ~86164 s)
-        const earthPeriod = 86164; // seconds
+        const earthPeriod = 86164;
         const rotAngle = (simTimeSec / earthPeriod) * Math.PI * 2;
 
-        // Move highlight point around equator to suggest rotation
         const hx = cx + r * 0.4 * Math.cos(rotAngle);
         const hy = cy - r * 0.4 * Math.sin(rotAngle);
 
@@ -224,7 +299,6 @@ document.addEventListener("DOMContentLoaded", () => {
         ctx.arc(cx, cy, r, 0, Math.PI * 2);
         ctx.fill();
 
-        // Simple atmospheric glow
         const glow = ctx.createRadialGradient(cx, cy, r * 0.8, cx, cy, r * 1.7);
         glow.addColorStop(0, "rgba(80,160,255,0.26)");
         glow.addColorStop(1, "rgba(80,160,255,0)");
@@ -235,14 +309,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function drawMoon(cx, cy, orbitR, simTimeSec, earthR) {
-        const moonPeriod = 27.3217 * 24 * 3600; // seconds
+        const moonPeriod = 27.3217 * 24 * 3600;
         const angle = (simTimeSec / moonPeriod) * Math.PI * 2 + viewAngle;
 
         const mx = cx + orbitR * Math.cos(angle);
         const my = cy + orbitR * Math.sin(angle);
-        const moonR = earthR * 0.27; // realistic radius ratio
+        const moonR = earthR * 0.27;
 
-        // orbit path
         ctx.save();
         ctx.strokeStyle = "#1f2a3f";
         ctx.lineWidth = 1;
@@ -253,7 +326,6 @@ document.addEventListener("DOMContentLoaded", () => {
         ctx.setLineDash([]);
         ctx.restore();
 
-        // moon body
         const m = ctx.createRadialGradient(
             mx - moonR * 0.3,
             my - moonR * 0.3,
@@ -306,8 +378,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const last = trail[trail.length - 1];
         const dLast = Math.hypot(last.x - cx, last.y - cy);
 
-        // Only keep points "behind" the asteroid (farther from Earth)
-        const pts = trail.filter(p => Math.hypot(p.x - cx, p.y - cy) > dLast);
+        const pts = trail.filter((p) => Math.hypot(p.x - cx, p.y - cy) > dLast);
         if (pts.length < 2) return;
 
         ctx.lineWidth = 2;
@@ -321,15 +392,17 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    /* ----------------------------- ANIMATION LOOP (REAL TIME BASE) ----------------------------- */
+    /* ------------------------------------------------------------------
+     * 8. MAIN ANIMATION LOOP (REAL TIME BASE)
+     * ------------------------------------------------------------------ */
+
     function animate() {
         const realNow = performance.now();
-        const dtReal = (realNow - lastRealTs) / 1000; // seconds
+        const dtReal = (realNow - lastRealTs) / 1000;
         lastRealTs = realNow;
 
-        const warp = getWarp(); // 1.0 = real time
+        const warp = getWarp();
         simTimeMs += dtReal * 1000 * warp;
-
         const simTimeSec = simTimeMs / 1000;
 
         const rect = canvas.getBoundingClientRect();
@@ -340,7 +413,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         ctx.clearRect(0, 0, w, h);
 
-        // Grid
         ctx.strokeStyle = "#1a2435";
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -364,23 +436,15 @@ document.addEventListener("DOMContentLoaded", () => {
         asteroids.forEach((obj, i) => {
             const { dMin, speed, epochClose } = obj;
 
-            // Time offset relative to closest approach (seconds), using REAL TIME
             const dtSec = (simTimeMs - epochClose) / 1000;
-
-            // Straight-line fly-by: distance^2 = d_min^2 + (v * dt)^2
             const distKm = Math.sqrt(dMin * dMin + (speed * dtSec) * (speed * dtSec));
 
-            // Distance mapping: linear near Earth, clamped far away
             const dNear = dMin;
-            const dFar = dMin * 10; // beyond this, we visually clamp
+            const dFar = dMin * 10;
             let tNorm;
-            if (distKm <= dNear) {
-                tNorm = 0; // at closest
-            } else if (distKm >= dFar) {
-                tNorm = 1;
-            } else {
-                tNorm = (distKm - dNear) / (dFar - dNear); // 0..1
-            }
+            if (distKm <= dNear) tNorm = 0;
+            else if (distKm >= dFar) tNorm = 1;
+            else tNorm = (distKm - dNear) / (dFar - dNear);
 
             const maxRZ = maxR * zoom;
             const rScreen = earthR * 1.2 + tNorm * (maxRZ - earthR * 1.2);
@@ -397,7 +461,6 @@ document.addEventListener("DOMContentLoaded", () => {
             const isClosest = i === 0;
             const baseR = 4 + obj.data.diameter_km * 2;
             const radius = (isClosest ? baseR * 1.8 : baseR) * zoom;
-
 
             const fill = isClosest
                 ? "#ffb34d"
