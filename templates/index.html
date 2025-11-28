@@ -33,35 +33,41 @@
 
             <div class="metric-card">
                 <div class="metric-label">Diameter</div>
-                <div class="metric-value" id="m-diameter">{{ featured.diameter_km }} km</div>
+                <div class="metric-value" id="m-diameter">
+                    {{ featured.estimated_diameter.meters.estimated_diameter_min }} –
+                    {{ featured.estimated_diameter.meters.estimated_diameter_max }} m
+                </div>
             </div>
 
             <div class="metric-card">
                 <div class="metric-label">Speed</div>
-                <div class="metric-value" id="m-speed">{{ featured.speed_kms }} km/s</div>
+                <div class="metric-value" id="m-speed">
+                    {{ featured.close_approach_data[0].relative_velocity.kilometers_per_second }} km/s
+                </div>
             </div>
 
             <div class="metric-card">
                 <div class="metric-label">Miss Distance</div>
                 <div class="metric-value" id="m-miss">
-                    {{ '{:,'.format if false else '' }}{{ featured.miss_distance_km | int }} km
+                    {{ featured.close_approach_data[0].miss_distance.kilometers }} km
                 </div>
             </div>
 
             <div class="metric-card">
                 <div class="metric-label">Closest Approach</div>
                 <div class="metric-value small" id="m-approach">
-                    {{ featured.closest_approach }}
+                    {{ featured.close_approach_data[0].close_approach_date_full }}
                 </div>
             </div>
 
             <div class="metric-card">
                 <div class="metric-label">Hazard Level</div>
                 <div class="metric-value" id="m-hazard">
-                    {{ "Hazardous" if featured.hazardous else "Not Hazardous" }}
+                    {{ "Hazardous" if featured.is_potentially_hazardous_asteroid else "Not Hazardous" }}
                 </div>
             </div>
         </section>
+
 
         <!-- REAL-TIME MAP -->
         <section class="space-section">
