@@ -102,10 +102,23 @@ body {
 }
 
 .metric-value {
-    font-size: 1.45rem;
-    font-weight: 600;
-    text-align: center;
+    font-size: 1rem;
+    /* Reduce font size */
+    line-height: 1.2;
+    /* Tighter spacing */
+    word-wrap: break-word;
+    /* Prevent overflow */
+    overflow: hidden;
+    /* Hide long overflows */
+    text-overflow: ellipsis;
+    /* ... if too long */
 }
+
+.metric-label {
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+}
+
 
 .metric-value.small {
     font-size: 1.2rem;
