@@ -1,0 +1,199 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600&display=swap");
+
+:root {
+    --bg-main: #05070c;
+    --bg-panel: #0a0c12;
+    --border: #1a2435;
+
+    --text-main: #ffffff;
+    --text-subtle: #9ba9c5;
+
+    --accent: #4fa3ff;
+    --danger: #ff5c66;
+}
+
+/* Make widths include padding/borders so alignment holds on both sides */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+/* GLOBAL */
+body {
+    margin: 0;
+    font-family: "Space Grotesk", sans-serif;
+    background: var(--bg-main);
+    color: var(--text-main);
+}
+
+.app-shell {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+
+/* HEADER */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.subtitle {
+    color: var(--text-subtle);
+    font-size: 0.9rem;
+}
+
+/* BADGES */
+.badge-row {
+    display: flex;
+    gap: 0.6rem;
+}
+
+.badge {
+    padding: 0.25rem 0.7rem;
+    border-radius: 30px;
+    border: 1px solid var(--border);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+}
+
+.badge-live {
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
+.badge-nasa {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+/* TOP METRIC PANELS */
+.metric-strip {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    overflow-x: auto;
+}
+
+.metric-card {
+    flex: 1;
+    max-width: 180px;
+    aspect-ratio: 1/1;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+
+    padding: 0.8rem;
+}
+
+.metric-label {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-subtle);
+    margin-bottom: 0.45rem;
+    text-align: center;
+}
+
+.metric-value {
+    font-size: 1.45rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.metric-value.small {
+    font-size: 1.2rem;
+}
+
+/* MAP PANEL (same outer width as metrics) */
+.space-section {
+    margin-top: 1.8rem;
+}
+
+.space-panel {
+    width: 100%;
+    border: 1px solid var(--border);
+    background: var(--bg-panel);
+    border-radius: 1rem;
+    padding: 0.8rem;
+}
+
+#spaceCanvas {
+    width: 100%;
+    aspect-ratio: 1/1;
+    display: block;
+}
+
+/* TIMELINE / COUNTDOWN */
+.timeline-panel {
+    margin-top: 1rem;
+}
+
+.timeline-header {
+    display: flex;
+    justify-content: space-between;
+    color: var(--text-subtle);
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+#timeSlider {
+    width: 100%;
+}
+
+.countdown {
+    margin-top: 0.45rem;
+    font-size: 0.8rem;
+    color: var(--text-subtle);
+}
+
+/* LIST */
+.list-section {
+    margin-top: 1.8rem;
+}
+
+.list-section h2 {
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-subtle);
+    margin-bottom: 0.7rem;
+}
+
+.neo-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1rem;
+}
+
+.neo-item {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    padding: 1rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.neo-item.active {
+    border-color: var(--accent);
+}
+
+.neo-name {
+    font-weight: 600;
+    margin-bottom: 0.2rem;
+}
+
+.neo-line {
+    display: flex;
+    justify-content: space-between;
+    color: var(--text-subtle);
+}

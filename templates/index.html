@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Asteroid Danger Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <div class="app-shell">
+
+        <!-- HEADER -->
+        <header class="header">
+            <div>
+                <h1>Asteroid Danger Dashboard</h1>
+                <p class="subtitle">NASA NeoWs — Daily Near-Earth Object Feed</p>
+            </div>
+            <div class="badge-row">
+                <span class="badge badge-live">LIVE</span>
+                <span class="badge badge-nasa">NASA</span>
+            </div>
+        </header>
+
+        <!-- TOP 6 METRICS -->
+        <section class="metric-strip">
+            <div class="metric-card">
+                <div class="metric-label">Name</div>
+                <div class="metric-value" id="m-name">{{ featured.name }}</div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Diameter</div>
+                <div class="metric-value" id="m-diameter">{{ featured.diameter_km }} km</div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Speed</div>
+                <div class="metric-value" id="m-speed">{{ featured.speed_kms }} km/s</div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Miss Distance</div>
+                <div class="metric-value" id="m-miss">
+                    {{ '{:,'.format if false else '' }}{{ featured.miss_distance_km | int }} km
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Closest Approach</div>
+                <div class="metric-value small" id="m-approach">
+                    {{ featured.closest_approach }}
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Hazard Level</div>
+                <div class="metric-value" id="m-hazard">
+                    {{ "Hazardous" if featured.hazardous else "Not Hazardous" }}
+                </div>
+            </div>
+        </section>
+
+        <!-- REAL-TIME MAP -->
+        <section class="space-section">
+            <div class="space-panel">
+                <canvas id="spaceCanvas"></canvas>
+            </div>
+
+            <div class="timeline-panel">
+                <div class="timeline-header">
+                    <span>Trajectory Time Warp</span>
+                    <span id="time-label">x1.0</span>
+                </div>
+                <!-- Slider: center position = 1x -->
+                <input id="timeSlider" type="range" min="0" max="100" value="50" />
+                <p class="countdown" id="countdown"></p>
+            </div>
+        </section>
+
+        <!-- LIST -->
+        <section class="list-section">
+            <h2>Today’s Near-Earth Objects</h2>
+            <div class="neo-list" id="neo-list"></div>
+        </section>
+    </div>
+
+    <script>
+        const ASTEROID_DATA = {{ asteroids_json| safe }};
+    </script>
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+
+</html>
