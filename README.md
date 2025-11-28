@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/Yorozaki-Logo-TM.svg" alt="YZ KineFlow Logo" width="50%" />
+</p>
+
 # Asteroid Danger Dashboard
 
 A real-time visualization of Near-Earth Objects (NEOs) using NASA’s NeoWs API.
